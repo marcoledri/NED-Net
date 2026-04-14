@@ -168,9 +168,12 @@ In `nano`:
 5. Press `Ctrl+O` then `Enter` to save
 6. Press `Ctrl+X` to exit
 
-Do the same for `pretrain.sh` and `resume.sh`:
+Do the same for `pretrain_short.sh`, `pretrain.sh`, and `resume.sh`:
 
 ```bash
+nano pretrain_short.sh
+# same edits as above, save and exit
+
 nano pretrain.sh
 # same edits as above, save and exit
 
@@ -248,16 +251,21 @@ Common issues:
 
 ---
 
-## Step 8: Run the full pre-training
+## Step 8: Short pre-training run (5 epochs)
 
-Once the test job succeeds:
+Instead of jumping straight into a 7-day training job, we do a short run
+first. This uses ALL the data but only trains for 5 epochs (~1-2 days).
+
+Why? Two reasons:
+1. You can check that the loss is going down (the model is learning)
+2. You get an early model to fine-tune in NED-Net and see if it's useful
+
+No work is wasted — the full run later **resumes from this checkpoint**.
 
 ```bash
 cd ~/eeg-seizure-shared
-sbatch scripts/lunarc/pretrain.sh
+sbatch scripts/lunarc/pretrain_short.sh
 ```
-
-This submits a job with a **7-day time limit** (the maximum allowed).
 
 ### Monitor it:
 
@@ -265,45 +273,66 @@ This submits a job with a **7-day time limit** (the maximum allowed).
 # Check status
 jobinfo -u $USER
 
-# Watch output (replace job ID)
-tail -f logs/bendr_pretrain_XXXXXXX.out
+# Watch output (replace job ID with yours)
+tail -f logs/bendr_5ep_XXXXXXX.out
 
 # Check how much of your allocation you've used
 projinfo
 ```
 
-### How long will it take?
+### What to look for:
 
-- **~25,000 hours** of single-channel EEG data
-- **30 epochs** of training
-- Estimated: **5–10 days** total (1–2 job submissions)
+- The **loss should decrease** each epoch (e.g., 8.5 → 6.2 → 5.1 → ...)
+- The **accuracy should increase** (e.g., 0.01 → 0.05 → 0.12 → ...)
 
-The script saves a checkpoint every 5 epochs, so if the 7-day limit
-is reached mid-training, no work is lost.
+If the loss is NOT decreasing after 3 epochs, something is wrong — let me
+know and we'll debug.
+
+### When it finishes:
+
+You'll get an email. Download the early model to your Mac (see Step 10)
+and try fine-tuning it in NED-Net. If the results look promising, continue
+to Step 9.
 
 ---
 
-## Step 9: Resume if the job timed out
+## Step 9: Continue to full training (30 epochs)
 
-If the job finished all 30 epochs, skip this step. If it was killed
-at the 7-day limit (you'll get an email saying the job ended), resume:
+Once you're happy with the 5-epoch model, continue training to 30 epochs.
+The resume script picks up exactly where the short run stopped:
 
 ```bash
 cd ~/eeg-seizure-shared
 sbatch scripts/lunarc/resume.sh
 ```
 
-The resume script automatically finds the latest checkpoint and continues
-from where it stopped.
-
-**Pro tip:** You can chain the jobs so the resume starts automatically:
+This has a **7-day time limit**. If it doesn't finish all 30 epochs in
+7 days, just submit it again — it resumes from the latest checkpoint
+every time:
 
 ```bash
-JOBID=$(sbatch --parsable scripts/lunarc/pretrain.sh)
+# If it timed out, just run it again:
+sbatch scripts/lunarc/resume.sh
+```
+
+**Pro tip:** You can chain jobs so the resume starts automatically after
+the first one finishes:
+
+```bash
+JOBID=$(sbatch --parsable scripts/lunarc/resume.sh)
 sbatch -d afterok:$JOBID scripts/lunarc/resume.sh
 ```
 
-This means: "submit resume.sh, but only start it after pretrain.sh finishes."
+### Alternative: run all 30 epochs from scratch
+
+If you prefer to skip the short run and go straight to 30 epochs:
+
+```bash
+sbatch scripts/lunarc/pretrain.sh
+```
+
+This is fine too — it saves checkpoints every 5 epochs, so if the job
+is stopped you can always resume.
 
 ---
 
