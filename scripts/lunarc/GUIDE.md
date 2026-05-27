@@ -47,7 +47,7 @@ On your **local Mac**, open Terminal and run:
 
 ```bash
 rsync -avz --exclude '__pycache__' --exclude '*.pyc' --exclude '.git' \
-  ~/Dropbox/Work/eeg-seizure-shared/ \
+  ~/Dropbox/Work/Software/NED-Net/ \
   YOUR_USERNAME@cosmos.lunarc.lu.se:~/eeg-seizure-shared/
 ```
 
