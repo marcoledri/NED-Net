@@ -15,18 +15,19 @@
 #   cd ~/NED-Net
 #   bash scripts/arrhenius/setup_env.sh
 #
-# TODO before first run:
-#   - Set NAISS_PROJECT below to the SUPR project ID (e.g. naiss2026-X-XXX)
-#   - If `storagequota` reports a path other than /nobackup/proj/disk/<id>,
-#     override PROJECT_STORAGE below (or via the env var) — typically only
-#     needed if you were granted the flash tier instead of disk
-#   - Confirm Apptainer is available as a module (it's standard at NAISS)
+# Wired for SUPR project naiss2026-3-358. If your allocation
+# changes, update NAISS_PROJECT below and the #SBATCH -A lines in
+# the sbatch scripts. Override PROJECT_STORAGE if `storagequota`
+# reports a path other than /nobackup/proj/disk/<id> (e.g. flash
+# tier instead of disk).
+# Apptainer is loaded via `module load Apptainer`; if that fails,
+# try `module spider apptainer` / `module spider singularity`.
 # ============================================================
 
 set -euo pipefail
 
 # ── EDIT: SUPR project for Arrhenius once the allocation is approved ──
-NAISS_PROJECT="${NAISS_PROJECT:-naiss2026-X-XXX}"
+NAISS_PROJECT="${NAISS_PROJECT:-naiss2026-3-358}"
 
 # Arrhenius project storage convention (per NAISS docs):
 #   /nobackup/proj/disk/<PROJECT>   – default bulk

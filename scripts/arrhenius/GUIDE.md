@@ -13,21 +13,19 @@ conda-forge to catch up on every release.
 
 ---
 
-## Items confirmed from NAISS docs (2026-06)
+## Settings baked into the scripts
 
-The login hostname, GPU partition, project storage convention, and
-account-status workflow are now baked into the scripts. Only the
-SUPR project ID is still a placeholder — set it once in `_common.sh`
-and the `#SBATCH -A` line of each job, then everything else
-resolves.
+All operational details are wired in. If your SUPR project ever changes,
+update `NAISS_PROJECT` in `_common.sh` *and* the `#SBATCH -A` line of
+every sbatch script (Slurm reads `-A` before `_common.sh` runs).
 
 | Item | Value | Where it lives |
 |------|-------|----------------|
 | Login | `login.hpc.arrhenius.naiss.se` | Step 1 |
+| Project ID | `naiss2026-3-358` | `_common.sh` + `#SBATCH -A` |
+| Project storage | `/nobackup/proj/disk/naiss2026-3-358` | `_common.sh` |
 | GPU partition | `arrhenius-gpu` | `_common.sh` + `#SBATCH -p` |
-| Project storage | `/nobackup/proj/disk/<PROJECT>` (or `…/flash/…`) | `_common.sh` |
 | Account status | https://supr.naiss.se/account/ | this guide |
-| Project ID | **placeholder** `naiss2026-X-XXX` | `_common.sh` + `#SBATCH -A` |
 | Apptainer module | `Apptainer` | `_common.sh` — fall back to `singularity` if `module spider` shows that instead |
 
 ---
@@ -116,22 +114,19 @@ doesn't match your allocation (e.g. your project only granted the
 
 ---
 
-## Step 4: Confirm project ID + paths in `_common.sh`
+## Step 4: Project ID + paths
 
-Edit `scripts/arrhenius/_common.sh` once and set:
+Already set for `naiss2026-3-358` with storage at
+`/nobackup/proj/disk/naiss2026-3-358` (both `_common.sh` and every
+`#SBATCH -A` line). Nothing to edit unless your allocation changes —
+if it does, update `NAISS_PROJECT` in `_common.sh` *and* the inline
+`#SBATCH -A` lines in `test_gpu.sh`, `test_gpu_tiny.sh`,
+`pretrain_short.sh`, `pretrain.sh`, `resume.sh` (Slurm reads `-A`
+before `_common.sh` runs).
 
-- `NAISS_PROJECT` — your SUPR ID (e.g. `naiss2026-2-99`)
-- `PROJECT_STORAGE` — only override if `storagequota` reports something
-  other than `/nobackup/proj/disk/<id>` (e.g. you were granted only
-  the flash tier, then use `/nobackup/proj/flash/<id>`)
-
-Every job script and `setup_env.sh` source this file, so this is the
-only place you need to edit.
-
-Then update each `.sh` file's `#SBATCH -A naiss2026-X-XXX` line to
-match (Slurm reads the account before `_common.sh` runs, so it has
-to be inline). Files to touch: `test_gpu.sh`, `test_gpu_tiny.sh`,
-`pretrain_short.sh`, `pretrain.sh`, `resume.sh`.
+Override `PROJECT_STORAGE` only if `storagequota` reports something
+other than `/nobackup/proj/disk/...` (e.g. you were granted only the
+flash tier — then point it at `/nobackup/proj/flash/<id>`).
 
 ---
 

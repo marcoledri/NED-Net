@@ -9,7 +9,7 @@
 # Slurm account name on Arrhenius matches the SUPR ID. Verify what
 # you've been granted at https://supr.naiss.se/account/ and via
 # `storagequota` on a login node.
-export NAISS_PROJECT="${NAISS_PROJECT:-naiss2026-X-XXX}"
+export NAISS_PROJECT="${NAISS_PROJECT:-naiss2026-3-358}"
 
 # Project storage on Arrhenius. NAISS publishes two tiers:
 #   /nobackup/proj/disk/<PROJECT>   – default bulk storage (slower, larger)

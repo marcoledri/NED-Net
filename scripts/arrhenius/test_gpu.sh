@@ -23,7 +23,7 @@
 # Project comes from your SUPR allocation (find it via `storagequota`
 # or at https://supr.naiss.se/account/). Update the line below once
 # the account is approved.
-#SBATCH -A naiss2026-X-XXX
+#SBATCH -A naiss2026-3-358
 #SBATCH -p arrhenius-gpu
 
 set -euo pipefail

@@ -23,7 +23,7 @@
 #SBATCH --mail-user=marco.ledri@med.lu.se
 #SBATCH --mail-type=END,FAIL
 #SBATCH --no-requeue
-#SBATCH -A naiss2026-X-XXX
+#SBATCH -A naiss2026-3-358
 #SBATCH -p arrhenius-gpu
 
 set -euo pipefail
