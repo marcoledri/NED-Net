@@ -17,7 +17,9 @@
 #
 # TODO before first run:
 #   - Set NAISS_PROJECT below to the SUPR project ID (e.g. naiss2026-X-XXX)
-#   - Confirm the project storage path matches what `projinfo` reports
+#   - If `storagequota` reports a path other than /nobackup/proj/disk/<id>,
+#     override PROJECT_STORAGE below (or via the env var) — typically only
+#     needed if you were granted the flash tier instead of disk
 #   - Confirm Apptainer is available as a module (it's standard at NAISS)
 # ============================================================
 
@@ -26,12 +28,12 @@ set -euo pipefail
 # ── EDIT: SUPR project for Arrhenius once the allocation is approved ──
 NAISS_PROJECT="${NAISS_PROJECT:-naiss2026-X-XXX}"
 
-# Per NAISS docs the Arrhenius filesystem is Lustre; project storage
-# location is published once your project is granted. Both candidates
-# below are common conventions — confirm with `projinfo` on first login
-# and keep only the correct one.
-PROJECT_STORAGE="${PROJECT_STORAGE:-/cfs/klemming/projects/${NAISS_PROJECT}}"
-# Fallback: /proj/${NAISS_PROJECT}  (uncomment if Klemming-style path is wrong)
+# Arrhenius project storage convention (per NAISS docs):
+#   /nobackup/proj/disk/<PROJECT>   – default bulk
+#   /nobackup/proj/flash/<PROJECT>  – fast scratch (use if granted)
+# Run `storagequota` on a login node to see which directories your
+# project actually has.
+PROJECT_STORAGE="${PROJECT_STORAGE:-/nobackup/proj/disk/${NAISS_PROJECT}}"
 
 CONTAINER_DIR="${PROJECT_STORAGE}/containers"
 CONTAINER_PATH="${CONTAINER_DIR}/pytorch-ngc-arm64.sif"
@@ -51,7 +53,7 @@ echo
 
 if [ ! -d "${PROJECT_STORAGE}" ]; then
     echo "ERROR: project storage not found at ${PROJECT_STORAGE}"
-    echo "Run \`projinfo\` and set PROJECT_STORAGE to the path it reports,"
+    echo "Run \`storagequota\` and set PROJECT_STORAGE to the path it reports,"
     echo "then re-run this script."
     exit 1
 fi

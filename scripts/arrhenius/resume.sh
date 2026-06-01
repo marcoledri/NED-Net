@@ -19,12 +19,12 @@
 #SBATCH -e logs/bendr_resume_%j.err
 #SBATCH -t 168:00:00
 #SBATCH -N 1
-#SBATCH --gpus-per-node=1
+#SBATCH --gpus=1
 #SBATCH --mail-user=marco.ledri@med.lu.se
 #SBATCH --mail-type=END,FAIL
 #SBATCH --no-requeue
 #SBATCH -A naiss2026-X-XXX
-#SBATCH -p gpu
+#SBATCH -p arrhenius-gpu
 
 set -euo pipefail
 

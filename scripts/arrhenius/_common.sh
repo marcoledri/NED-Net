@@ -6,14 +6,19 @@
 # ============================================================
 
 # SUPR allocation — update once NAISS approves your project.
-# Slurm account name on Arrhenius typically tracks the SUPR ID
-# (confirm with `projinfo` at first login).
+# Slurm account name on Arrhenius matches the SUPR ID. Verify what
+# you've been granted at https://supr.naiss.se/account/ and via
+# `storagequota` on a login node.
 export NAISS_PROJECT="${NAISS_PROJECT:-naiss2026-X-XXX}"
 
-# Lustre project storage. The path published by NAISS for
-# Arrhenius is the single Lustre tree — `projinfo` will print it.
-# Set this once, then every script picks it up.
-export PROJECT_STORAGE="${PROJECT_STORAGE:-/cfs/klemming/projects/${NAISS_PROJECT}}"
+# Project storage on Arrhenius. NAISS publishes two tiers:
+#   /nobackup/proj/disk/<PROJECT>   – default bulk storage (slower, larger)
+#   /nobackup/proj/flash/<PROJECT>  – fast scratch (use if granted)
+# Run `storagequota` on a login node to see which paths your project
+# has and how much quota remains. Override PROJECT_STORAGE if your
+# allocation only includes the flash tier (or both, and you prefer it
+# for hot data).
+export PROJECT_STORAGE="${PROJECT_STORAGE:-/nobackup/proj/disk/${NAISS_PROJECT}}"
 
 # Data, code, output, container.
 export EDF_DIR="${EDF_DIR:-${PROJECT_STORAGE}/edf_data}"
@@ -27,11 +32,11 @@ export EXTRAS_VENV="${EXTRAS_VENV:-${PROJECT_STORAGE}/venvs/bendr-extras}"
 # from every worker process.
 export NVME_SCRATCH="${NVME_SCRATCH:-/scratch/local/${SLURM_JOB_ID:-tmp}}"
 
-# Partition / QoS names — NAISS has not published these yet for
-# Arrhenius. The names below are placeholders that follow the
-# pattern used on Tetralith/Berzelius; replace once announced.
-export GPU_PARTITION="${GPU_PARTITION:-gpu}"
-export GPU_QOS="${GPU_QOS:-normal}"
+# Partition / QoS. The Arrhenius GPU partition (Grace Hopper / H200)
+# is `arrhenius-gpu`. No dedicated short-job QoS is documented yet, so
+# we leave QOS unset by default and rely on walltime to gate test jobs.
+export GPU_PARTITION="${GPU_PARTITION:-arrhenius-gpu}"
+export GPU_QOS="${GPU_QOS:-}"
 
 # Helper: run a command inside the container with GPU and our
 # extras venv activated, with the project bound in.

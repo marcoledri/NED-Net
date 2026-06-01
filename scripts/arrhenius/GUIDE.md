@@ -13,20 +13,22 @@ conda-forge to catch up on every release.
 
 ---
 
-## Items that still need confirmation
+## Items confirmed from NAISS docs (2026-06)
 
-NAISS has published Arrhenius's hardware specs, but a few
-operational details aren't public yet. Wherever you see `TODO` in
-the scripts or below, confirm against the NAISS docs / `projinfo`
-when your allocation is approved, then update `_common.sh` once.
+The login hostname, GPU partition, project storage convention, and
+account-status workflow are now baked into the scripts. Only the
+SUPR project ID is still a placeholder — set it once in `_common.sh`
+and the `#SBATCH -A` line of each job, then everything else
+resolves.
 
-| Item | Current placeholder | Where to fix |
-|------|---------------------|--------------|
-| SUPR project ID | `naiss2026-X-XXX` | `_common.sh` + `#SBATCH -A` in each job |
-| Slurm partition for GH200 | `gpu` | `_common.sh` + `#SBATCH -p` |
-| Project storage path | `/cfs/klemming/projects/<id>` | `_common.sh` |
-| Login node hostname | (not in scripts) | This guide, Step 1 |
-| Apptainer module name | `Apptainer` | `_common.sh` — may be `apptainer` or `singularity` |
+| Item | Value | Where it lives |
+|------|-------|----------------|
+| Login | `login.hpc.arrhenius.naiss.se` | Step 1 |
+| GPU partition | `arrhenius-gpu` | `_common.sh` + `#SBATCH -p` |
+| Project storage | `/nobackup/proj/disk/<PROJECT>` (or `…/flash/…`) | `_common.sh` |
+| Account status | https://supr.naiss.se/account/ | this guide |
+| Project ID | **placeholder** `naiss2026-X-XXX` | `_common.sh` + `#SBATCH -A` |
+| Apptainer module | `Apptainer` | `_common.sh` — fall back to `singularity` if `module spider` shows that instead |
 
 ---
 
@@ -43,26 +45,41 @@ when your allocation is approved, then update `_common.sh` once.
 
 ## Step 1: Log in
 
-Once NAISS publishes the login hostname for Arrhenius, SSH in:
+Before the first login, confirm your account is "enabled / Active" at
+[supr.naiss.se/account/](https://supr.naiss.se/account/). If the
+status is still "missing → enabled, transferring", wait — SSH will
+fail with `Permission denied (publickey)` until the transfer
+completes.
 
 ```bash
-ssh <YOUR_USERNAME>@<login.arrhenius.naiss.se>     # TODO confirm
+ssh ledri@login.hpc.arrhenius.naiss.se
 ```
 
-If two-factor is required (likely, via Pocket Pass like LUNARC),
-follow the prompt.
+Fallback login nodes (load-balanced): `arrhenius1.hpc.arrhenius.naiss.se`,
+`arrhenius3.hpc.arrhenius.naiss.se`.
 
 ---
 
 ## Step 2: Upload code to Arrhenius
 
-From your **local Mac**:
+From your **local machine** (macOS Terminal, Linux, or WSL on Windows):
 
 ```bash
-rsync -avz --exclude '__pycache__' --exclude '*.pyc' --exclude '.git' \
+rsync -avz --filter=':- .gitignore' --exclude '.git' \
   ~/Software/NED-Net/ \
-  <YOUR_USERNAME>@<arrhenius-login>:~/NED-Net/
+  ledri@login.hpc.arrhenius.naiss.se:~/NED-Net/
 ```
+
+From Windows (PowerShell → WSL Ubuntu):
+
+```bash
+rsync -avz --filter=':- .gitignore' --exclude '.git' \
+  /mnt/c/Users/Marco/Software/NED-Net/ \
+  ledri@login.hpc.arrhenius.naiss.se:~/NED-Net/
+```
+
+The same SSH ControlMaster setup from the LUNARC guide works here —
+just add an entry for `Host arrhenius login.hpc.arrhenius.naiss.se`.
 
 ---
 
@@ -78,7 +95,8 @@ rsync -avz --progress \
   $PROJECT_STORAGE/edf_data/
 ```
 
-`$PROJECT_STORAGE` is set by `_common.sh`; resolve it first with:
+`$PROJECT_STORAGE` is set by `_common.sh` (default
+`/nobackup/proj/disk/$NAISS_PROJECT`). Resolve it before transfer:
 
 ```bash
 cd ~/NED-Net
@@ -87,11 +105,14 @@ echo "Will write to: $PROJECT_STORAGE/edf_data"
 mkdir -p "$PROJECT_STORAGE/edf_data"
 ```
 
-If the path doesn't exist, run `projinfo` and update
-`PROJECT_STORAGE` in `_common.sh`.
+If `mkdir` fails, run `storagequota` on the login node — it lists
+the project directories you actually have access to. Update
+`PROJECT_STORAGE` in `_common.sh` if the doc-published convention
+doesn't match your allocation (e.g. your project only granted the
+`flash` tier).
 
-> **No backups.** Lustre project storage is unbacked at NAISS. Keep
-> the originals safe elsewhere.
+> **No backups.** `/nobackup/proj/...` is, as the name says, not
+> backed up. Keep the originals safe elsewhere.
 
 ---
 
@@ -100,15 +121,17 @@ If the path doesn't exist, run `projinfo` and update
 Edit `scripts/arrhenius/_common.sh` once and set:
 
 - `NAISS_PROJECT` — your SUPR ID (e.g. `naiss2026-2-99`)
-- `PROJECT_STORAGE` — only if `projinfo` reports something other than
-  `/cfs/klemming/projects/<id>`
+- `PROJECT_STORAGE` — only override if `storagequota` reports something
+  other than `/nobackup/proj/disk/<id>` (e.g. you were granted only
+  the flash tier, then use `/nobackup/proj/flash/<id>`)
 
 Every job script and `setup_env.sh` source this file, so this is the
 only place you need to edit.
 
 Then update each `.sh` file's `#SBATCH -A naiss2026-X-XXX` line to
 match (Slurm reads the account before `_common.sh` runs, so it has
-to be inline).
+to be inline). Files to touch: `test_gpu.sh`, `test_gpu_tiny.sh`,
+`pretrain_short.sh`, `pretrain.sh`, `resume.sh`.
 
 ---
 
@@ -144,28 +167,48 @@ mkdir -p ~/NED-Net/logs
 
 ---
 
-## Step 7: Quick GPU test (30 minutes max)
+## Step 7: Quick GPU smoke tests
+
+Run the **tiny** smoke first — it's tuned for 2–9 EDFs and finishes
+in well under 30 minutes. If it passes, run the full `test_gpu.sh`
+to validate at scale.
+
+### 7a — Tiny test (2–9 EDFs)
+
+Upload 2–9 EDFs to `$PROJECT_STORAGE/edf_data/` (Step 3 commands work
+for any subset — point them at a small folder), then:
 
 ```bash
 cd ~/NED-Net
+sbatch scripts/arrhenius/test_gpu_tiny.sh
+```
+
+Workers dropped to 2, validation disabled, 3 segments/file.
+
+### 7b — Full-scale test
+
+After the full dataset is uploaded:
+
+```bash
 sbatch scripts/arrhenius/test_gpu.sh
 ```
 
-Watch it:
+### Watch either job
 
 ```bash
-squeue -u $USER                       # job state
-tail -f logs/bendr_test_<JOBID>.out   # live output
+squeue -u $USER                            # job state
+tail -f logs/bendr_tiny_<JOBID>.out        # tiny
+tail -f logs/bendr_test_<JOBID>.out        # full
 ```
 
-Look for:
+### What to look for
 
-1. `Arch: aarch64` — confirms ARM kernel/userspace
+1. `Arch: aarch64` — confirms ARM kernel/userspace (Grace CPU)
 2. `PyTorch 2.x.x, CUDA 12.x` — container layer healthy
-3. `Device: NVIDIA H100` (or `GH200`) — GPU detected
-4. `Found XX EDF files` — Lustre path correct
+3. `Device: NVIDIA H200` (or `GH200`) — GPU detected
+4. `EDF files found:` listing — Lustre path correct
 5. `Epoch 1/2` … `Epoch 2/2` — training actually runs
-6. Checkpoint saved under `$PROJECT_STORAGE/bendr_output/test_run/`
+6. Checkpoint saved under `$PROJECT_STORAGE/bendr_output/{tiny,test}_run/`
 
 ---
 
@@ -262,12 +305,14 @@ zero-surprise option for the first runs.
 |------|---------|
 | List your jobs | `squeue -u $USER` |
 | Cancel a job | `scancel <JOBID>` |
-| Check allocation | `projinfo` |
+| Storage / project info | `storagequota` |
+| Account status | https://supr.naiss.se/account/ |
 | Watch a log | `tail -f logs/bendr_*_<JOBID>.out` |
 | Estimated start | `squeue --start -j <JOBID>` |
-| GPU partition status | `sinfo -p $GPU_PARTITION` |
+| GPU partition status | `sinfo -p arrhenius-gpu` |
 | Inspect container | `apptainer inspect $CONTAINER_PATH` |
 | Shell into container | `apptainer shell --nv $CONTAINER_PATH` |
+| Interactive GPU shell | `interactive -p arrhenius-gpu --gpus 1 -t 30` |
 
 ---
 
