@@ -6,7 +6,7 @@
 #
 # Usage:
 #   ssh cosmos.lunarc.lu.se
-#   cd ~/eeg-seizure-shared
+#   cd ~/NED-Net
 #   bash scripts/lunarc/setup_env.sh
 # ============================================================
 
@@ -33,7 +33,7 @@ echo "Installing dependencies..."
 pip install pyedflib scipy numpy tqdm
 
 echo "Installing eeg-seizure-analyzer in editable mode..."
-cd ~/eeg-seizure-shared
+cd ~/NED-Net
 pip install -e "."
 
 echo ""

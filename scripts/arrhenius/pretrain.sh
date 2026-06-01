@@ -1,55 +1,56 @@
 #!/bin/bash
 # ============================================================
-# LUNARC COSMOS — Full BENDR pre-training job
+# Arrhenius — Full BENDR pre-training (30 epochs, GH200)
 # ============================================================
-# Self-supervised pre-training on ~25,000 hours of rodent EEG.
-# All 8 EDF channels treated independently (8x data multiplier).
+# Self-supervised pre-training on ~25,000 hours of rodent EEG,
+# all 8 EDF channels treated independently (8x data multiplier).
 #
-# Estimated time: ~4-8 hours per epoch on A100 80GB.
-# 30 epochs = ~5-10 days. May need 1-2 job submissions.
+# GH200 with 96 GB HBM is faster per step than A100, but the
+# overall epoch wallclock is dominated by data I/O off Lustre,
+# so don't expect a dramatic speedup over LUNARC. Plan for the
+# same 1–2 job submissions to hit 30 epochs.
 #
 # Usage:
-#   sbatch scripts/lunarc/pretrain.sh
+#   sbatch scripts/arrhenius/pretrain.sh
 # ============================================================
 
-#SBATCH -p gpua100
-#SBATCH -t 168:00:00
-#SBATCH -N 1
 #SBATCH -J bendr_pretrain
 #SBATCH -o logs/bendr_pretrain_%j.out
 #SBATCH -e logs/bendr_pretrain_%j.err
-#SBATCH -A lu2026-2-60                    # LUNARC compute allocation (SUPR: LU 2026/2-60)
+#SBATCH -t 168:00:00
+#SBATCH -N 1
+#SBATCH --gpus-per-node=1
 #SBATCH --mail-user=marco.ledri@med.lu.se
 #SBATCH --mail-type=END,FAIL
 #SBATCH --no-requeue
+#SBATCH -A naiss2026-X-XXX
+#SBATCH -p gpu
 
-# Print job info
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+source scripts/arrhenius/_common.sh
+
+mkdir -p logs
+
 echo "========================================="
-echo "Job ID:      $SLURM_JOB_ID"
+echo "Job ID:      ${SLURM_JOB_ID}"
 echo "Node:        $(hostname)"
 echo "Start time:  $(date)"
 echo "========================================="
-cat $0
+cat "$0"
 echo "========================================="
 
-# Activate environment
-module purge
-module load Anaconda3/2024.06-1
-source config_conda.sh
-conda activate bendr
+if command -v module >/dev/null 2>&1; then
+    module purge || true
+    module load Apptainer 2>/dev/null || true
+fi
 
-nvidia-smi
+arrhenius_run "nvidia-smi"
 
-cd $HOME/NED-Net
-mkdir -p logs
-
-# EDF data lives in the project storage (same SUPR ID as compute: LU 2026/2-60)
-EDF_DIR="/lunarc/nobackup/projects/lu2026-2-60/edf_data"
-OUTPUT_DIR="$HOME/bendr_output/run1"
-
-python -m eeg_seizure_analyzer.ml.bendr_pretrain \
-    --data-dir "$EDF_DIR" \
-    --output-dir "$OUTPUT_DIR" \
+arrhenius_run "python -m eeg_seizure_analyzer.ml.bendr_pretrain \
+    --data-dir '${EDF_DIR}' \
+    --output-dir '${OUTPUT_DIR}' \
     --channels 0 1 2 3 4 5 6 7 \
     --epochs 30 \
     --batch-size 64 \
@@ -62,9 +63,9 @@ python -m eeg_seizure_analyzer.ml.bendr_pretrain \
     --context-layers 8 \
     --context-heads 8 \
     --checkpoint-every 5 \
-    --val-fraction 0.05
+    --val-fraction 0.05"
 
 echo "========================================="
 echo "Training finished at $(date)"
-echo "Output: $OUTPUT_DIR"
+echo "Output: ${OUTPUT_DIR}"
 echo "========================================="

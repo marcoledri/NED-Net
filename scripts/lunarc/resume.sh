@@ -11,8 +11,6 @@
 # Or chain automatically after the first job:
 #   JOBID=$(sbatch --parsable scripts/lunarc/pretrain.sh)
 #   sbatch -d afterok:$JOBID scripts/lunarc/resume.sh
-#
-# BEFORE RUNNING: Edit the lines marked EDIT below.
 # ============================================================
 
 #SBATCH -p gpua100
@@ -21,7 +19,7 @@
 #SBATCH -J bendr_resume
 #SBATCH -o logs/bendr_resume_%j.out
 #SBATCH -e logs/bendr_resume_%j.err
-#SBATCH -A lu20XX-X-XXX                   # <-- EDIT: your project account
+#SBATCH -A lu2026-2-60                    # LUNARC compute allocation (SUPR: LU 2026/2-60)
 #SBATCH --mail-user=marco.ledri@med.lu.se
 #SBATCH --mail-type=END,FAIL
 #SBATCH --no-requeue
@@ -40,11 +38,11 @@ conda activate bendr
 
 nvidia-smi
 
-cd $HOME/eeg-seizure-shared
+cd $HOME/NED-Net
 mkdir -p logs
 
-# EDIT: must match pretrain.sh
-EDF_DIR="/lunarc/nobackup/projects/YOUR_PROJECT/edf_data"
+# Must match pretrain.sh (storage shares the SUPR ID: LU 2026/2-60)
+EDF_DIR="/lunarc/nobackup/projects/lu2026-2-60/edf_data"
 OUTPUT_DIR="$HOME/bendr_output/run1"
 
 # Find the latest checkpoint automatically

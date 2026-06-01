@@ -1,0 +1,79 @@
+#!/bin/bash
+# ============================================================
+# Arrhenius — Resume BENDR pre-training
+# ============================================================
+# Resumes from the latest checkpoint in OUTPUT_DIR. Use this
+# after `pretrain_short.sh` (continue to 30 epochs) or after
+# `pretrain.sh` if it hit the 7-day walltime.
+#
+# Usage:
+#   sbatch scripts/arrhenius/resume.sh
+#
+# Or chain automatically:
+#   JOBID=$(sbatch --parsable scripts/arrhenius/pretrain.sh)
+#   sbatch -d afterok:$JOBID scripts/arrhenius/resume.sh
+# ============================================================
+
+#SBATCH -J bendr_resume
+#SBATCH -o logs/bendr_resume_%j.out
+#SBATCH -e logs/bendr_resume_%j.err
+#SBATCH -t 168:00:00
+#SBATCH -N 1
+#SBATCH --gpus-per-node=1
+#SBATCH --mail-user=marco.ledri@med.lu.se
+#SBATCH --mail-type=END,FAIL
+#SBATCH --no-requeue
+#SBATCH -A naiss2026-X-XXX
+#SBATCH -p gpu
+
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+source scripts/arrhenius/_common.sh
+
+mkdir -p logs
+
+echo "========================================="
+echo "Job ID:      ${SLURM_JOB_ID}"
+echo "Node:        $(hostname)"
+echo "Start time:  $(date)"
+echo "========================================="
+
+if command -v module >/dev/null 2>&1; then
+    module purge || true
+    module load Apptainer 2>/dev/null || true
+fi
+
+arrhenius_run "nvidia-smi"
+
+LATEST_CKPT=$(ls -t "${OUTPUT_DIR}"/checkpoint_epoch_*.pt 2>/dev/null | head -1)
+
+if [ -z "${LATEST_CKPT}" ]; then
+    echo "ERROR: No checkpoint found in ${OUTPUT_DIR}"
+    echo "Run scripts/arrhenius/pretrain_short.sh or pretrain.sh first."
+    exit 1
+fi
+
+echo "Resuming from: ${LATEST_CKPT}"
+
+arrhenius_run "python -m eeg_seizure_analyzer.ml.bendr_pretrain \
+    --data-dir '${EDF_DIR}' \
+    --output-dir '${OUTPUT_DIR}' \
+    --channels 0 1 2 3 4 5 6 7 \
+    --epochs 30 \
+    --batch-size 64 \
+    --lr 1e-3 \
+    --weight-decay 1e-4 \
+    --num-workers 16 \
+    --segment-sec 60 \
+    --target-fs 256 \
+    --encoder-h 512 \
+    --context-layers 8 \
+    --context-heads 8 \
+    --checkpoint-every 5 \
+    --val-fraction 0.05 \
+    --resume '${LATEST_CKPT}'"
+
+echo "========================================="
+echo "Resume finished at $(date)"
+echo "========================================="

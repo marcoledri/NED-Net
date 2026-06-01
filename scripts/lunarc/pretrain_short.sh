@@ -14,8 +14,6 @@
 #
 # After this finishes and you're happy with the result:
 #   sbatch scripts/lunarc/resume.sh    (continues to 30 epochs)
-#
-# BEFORE RUNNING: Edit the lines marked EDIT below.
 # ============================================================
 
 #SBATCH -p gpua100
@@ -24,7 +22,7 @@
 #SBATCH -J bendr_5ep
 #SBATCH -o logs/bendr_5ep_%j.out
 #SBATCH -e logs/bendr_5ep_%j.err
-#SBATCH -A lu20XX-X-XXX                   # <-- EDIT: your project account
+#SBATCH -A lu2026-2-60                    # LUNARC compute allocation (SUPR: LU 2026/2-60)
 #SBATCH --mail-user=marco.ledri@med.lu.se
 #SBATCH --mail-type=END,FAIL
 #SBATCH --no-requeue
@@ -46,11 +44,11 @@ conda activate bendr
 
 nvidia-smi
 
-cd $HOME/eeg-seizure-shared
+cd $HOME/NED-Net
 mkdir -p logs
 
-# EDIT: path to your EDF files on the cluster
-EDF_DIR="/lunarc/nobackup/projects/YOUR_PROJECT/edf_data"
+# EDF data lives in the project storage (same SUPR ID as compute: LU 2026/2-60)
+EDF_DIR="/lunarc/nobackup/projects/lu2026-2-60/edf_data"
 OUTPUT_DIR="$HOME/bendr_output/run1"
 
 python -m eeg_seizure_analyzer.ml.bendr_pretrain \
