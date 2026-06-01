@@ -59,7 +59,7 @@ arrhenius_run "python -m eeg_seizure_analyzer.ml.bendr_pretrain \
     --weight-decay 1e-4 \
     --num-workers 16 \
     --segment-sec 60 \
-    --target-fs 256 \
+    --target-fs 250 \
     --encoder-h 512 \
     --context-layers 8 \
     --context-heads 8 \
